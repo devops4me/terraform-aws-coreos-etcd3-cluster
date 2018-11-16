@@ -1,29 +1,106 @@
 
-### ################################################### ###
-### [[test-module]] testing terraform-aws-load-balancer ###
-### ################################################### ###
+### ############################################################## ###
+### [[etcd3-cluster-module]] bring up etcd3 cluster using ignition ###
+### ############################################################## ###
+
+locals
+{
+    ecosystem_id = "etcd3-cluster"
+    ignition_etcd3_json_content = "[Unit]\nRequires=coreos-metadata.service\nAfter=coreos-metadata.service\n\n[Service]\nEnvironmentFile=/run/metadata/coreos\nExecStart=\nExecStart=/usr/lib/coreos/etcd-wrapper $ETCD_OPTS \\\n  --listen-peer-urls=\"http://$${COREOS_EC2_IPV4_LOCAL}:2380\" \\\n  --listen-client-urls=\"http://0.0.0.0:2379\" \\\n  --initial-advertise-peer-urls=\"http://$${COREOS_EC2_IPV4_LOCAL}:2380\" \\\n  --advertise-client-urls=\"http://$${COREOS_EC2_IPV4_LOCAL}:2379\" \\\n  --discovery=\"https://discovery.etcd.io/2291edd0c764191c26c9969453db2b39\""
+    public_key_content = "ssh-rsa AAAABasdasdfasdfadfljiasdfa34324jh2f34hjgfjasdfasdfad"
+}
+
 
 # = ===
-# = Test the modern state-of-the-art AWS application load balancer by creating
-# = a number of ec2 instances configured with cloud config and set up to serve
-# = web pages using either the HTTP or HTTPS protocols.
-# =
-# = The ec2 instances are placed in a subnets across each of the region's
-# = availability zones and the security group is set to allow the appropriate
-# = traffic to pass through.
+# = This EC2 instance bootsrap configured by ignition is the engine room
+# = that powers the etcd3 cluster running within the CoreOS machine.
 # = ===
-/*
-module load-balancer-test
+resource aws_instance node
+{
+    count = "3"
+
+    instance_type          = "t2.micro"
+    ami                    = "${ module.coreos_ami_id.out_ami_id }"
+    key_name               = "${ aws_key_pair.troubleshoot.id }"
+    subnet_id              = "${ element( module.vpc-subnets.out_subnet_ids, count.index ) }"
+    user_data              = "${ data.ignition_config.etcd3.rendered }"
+    vpc_security_group_ids = [ "${ module.security-group.out_security_group_id }" ]
+
+    tags
+    {
+        Name   = "ec2-0${ ( count.index + 1 ) }-${ local.ecosystem_id }-${ module.ecosys.out_stamp }"
+        Class = "${ local.ecosystem_id }"
+        Instance = "${ local.ecosystem_id }-${ module.ecosys.out_stamp }"
+        Desc   = "This etcd3 ec2 node no.${ ( count.index + 1 ) } for ${ local.ecosystem_id } ${ module.ecosys.out_history_note }"
+    }
+
+}
+
+
+# = ===
+# = Visit the terraform ignition user manual at the url below to
+# = understand how ignition is used as the de-factor cloud-init
+# = starter for a cluster of CoreOS machines.
+# = ===
+# = https://www.terraform.io/docs/providers/ignition/index.html
+# = ===
+data ignition_config etcd3
+{
+    systemd = [
+        "${data.ignition_systemd_unit.etcd3.id}",
+    ]
+}
+
+
+# = ===
+# = This slice of the ignition configuration deals with the
+# = systemd service. Once rendered it is then placed alongside
+# = the other ignition configuration blocks in ignition_config
+# = ===
+data ignition_systemd_unit etcd3
+{
+    name = "etcd-member.service"
+    enabled = "true"
+    dropin
+    {
+        name = "20-clct-etcd-member.conf"
+        content = "${ local.ignition_etcd3_json_content }"
+    }
+
+}
+
+
+# = ===
+# = This public key enables logging into any of the nodes
+# = that should be running etcd3 for troubleshooting and
+# = validation purposes.
+# = ===
+resource aws_key_pair troubleshoot
+{
+    key_name = "etcd3-cluster-keypair"
+    public_key = "${ local.public_key_content }"
+}
+
+
+# = ===
+# = Thist state-of-the-art AWS application load balancer will service
+# = etcd traffic on port 2379 while round robin spraying the clustered
+# = nodes via the private IP addresses.
+# =
+# = Fow neither certificates nor the secure SSL protocol are used so
+# = this simple setup is mainly for development and testing purposes.
+# = ===
+module load-balancer
 {
     source                 = "github.com/devops4me/terraform-aws-load-balancer"
     in_vpc_id            = "${ module.vpc-subnets.out_vpc_id }"
     in_subnet_ids        = "${ module.vpc-subnets.out_subnet_ids }"
     in_security_group_id = "${ module.security-group.out_security_group_id }"
-    in_ip_addresses      = "${ aws_instance.server.*.private_ip }"
+    in_ip_addresses      = "${ aws_instance.node.*.private_ip }"
     in_ip_address_count  = 3
     in_ecosystem         = "${ local.ecosystem_id }"
 }
-*/
+
 
 # = ===
 # = This module creates a VPC and then allocates subnets in a round robin manner
@@ -58,94 +135,6 @@ module security-group
 }
 
 
-locals
-{
-    ecosystem_id = "etcd3-cluster"
-}
-
-
-/*
-output dns_name{ value             = "${ module.load-balancer-test.out_dns_name}" }
-*/
-
-output public_ip_addresses{ value  = "${ aws_instance.server.*.public_ip }" }
-output private_ip_addresses{ value = "${ aws_instance.server.*.private_ip }" }
-
-
-
-
-/*
-data ignition_systemd_unit example
-{
-    name = "example.service"
-    content = "[Service]\nType=oneshot\nExecStart=/usr/bin/echo Hello World\n\n[Install]\nWantedBy=multi-user.target"
-}
-*/
-
-
-
-# = ===
-# = Visit the terraform ignition user manual at the url below to
-# = understand how ignition is used as the de-factor cloud-init
-# = starter for a cluster of CoreOS machines.
-# = ===
-# = https://www.terraform.io/docs/providers/ignition/index.html
-# = ===
-data ignition_config example
-{
-    systemd = [
-        "${data.ignition_systemd_unit.example.id}",
-    ]
-}
-
-
-
-data ignition_systemd_unit example
-{
-    name = "etcd-member.service"
-    enabled = "true"
-    dropin
-    {
-        name = "20-clct-etcd-member.conf"
-        content = "[Unit]\nRequires=coreos-metadata.service\nAfter=coreos-metadata.service\n\n[Service]\nEnvironmentFile=/run/metadata/coreos\nExecStart=\nExecStart=/usr/lib/coreos/etcd-wrapper $ETCD_OPTS \\\n  --listen-peer-urls=\"http://$${COREOS_EC2_IPV4_LOCAL}:2380\" \\\n  --listen-client-urls=\"http://0.0.0.0:2379\" \\\n  --initial-advertise-peer-urls=\"http://$${COREOS_EC2_IPV4_LOCAL}:2380\" \\\n  --advertise-client-urls=\"http://$${COREOS_EC2_IPV4_LOCAL}:2379\" \\\n  --discovery=\"https://discovery.etcd.io/2291edd0c764191c26c9969453db2b39\""
-    }
-
-}
-
-resource aws_key_pair troubleshoot
-{
-    key_name = "etcd3-cluster-keypair"
-    public_key = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCXogeVepMAwZVBusFkHBabnLLL9NiYI0UgsxbqU8D5H+aMwOcZXiZyJSMvfgGQlkhFQidR3vhUcxmUA4LGlSHnEeiO7g7hgx5bb+nMI4RLXHzOh9BalsCEcZwFMAYAC2108EFLLflUMmIYe57XN/M/R6ct7pZAitIdEJ5/VpVTJ6P2Vj7Rt8BKn/p3bMy9l7CUcs/EmG/avxZ2ykK2bMl66l4fVE2r+vLqHLCUw+r6GtwTfeuT1iofhTp0ar82Pb3it+oSb7P2Kesq7AG6HpWHoyjQoQk+isTzdMrJ6ackIoYqZwol3wTSzx66QZmE8+KqODT/We7y1LqAMKOqa2tp"
-}
-
-# = ===
-# = Visit cloud-config.yaml and / or the cloud-init url to
-# = understand the setup of the web servers.
-# = ===
-# = https://cloudinit.readthedocs.io/en/latest/index.html
-# = ===
-resource aws_instance server
-{
-    count = "3"
-
-    instance_type          = "t2.micro"
-    ami                    = "${ module.coreos_ami_id.out_ami_id }"
-    key_name               = "${ aws_key_pair.troubleshoot.id }"
-    subnet_id              = "${ element( module.vpc-subnets.out_subnet_ids, count.index ) }"
-    user_data              = "${ data.ignition_config.example.rendered }"
-    vpc_security_group_ids = [ "${ module.security-group.out_security_group_id }" ]
-
-    tags
-    {
-        Name   = "ec2-0${ ( count.index + 1 ) }-${ local.ecosystem_id }-${ module.ecosys.out_stamp }"
-        Class = "${ local.ecosystem_id }"
-        Instance = "${ local.ecosystem_id }-${ module.ecosys.out_stamp }"
-        Desc   = "This ec2 instance no.${ ( count.index + 1 ) } for ${ local.ecosystem_id } ${ module.ecosys.out_history_note }"
-    }
-
-}
-
-
 # = ===
 # = This module dynamically acquires the HVM CoreOS AMI ID for the region that
 # = this infrastructure is built in (specified by the AWS credentials in play).
@@ -156,10 +145,10 @@ module coreos_ami_id
 }
 
 
-### ################# ###
-### [[module]] ecosys ###
-### ################# ###
-
+# = ===
+# = Build the eco-system string identifier and a history note detailing the
+# = who, why, what, when and where.
+# = ===
 module ecosys
 {
     source = "github.com/devops4me/terraform-aws-stamps"
