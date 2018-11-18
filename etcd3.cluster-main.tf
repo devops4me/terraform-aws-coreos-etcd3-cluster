@@ -38,7 +38,7 @@ resource aws_instance node
 
     instance_type          = "t2.micro"
     ami                    = "${ module.coreos_ami_id.out_ami_id }"
-    key_name               = "${ aws_key_pair.troubleshoot.id }"
+###########    key_name               = "${ aws_key_pair.troubleshoot.id }"
     subnet_id              = "${ element( module.vpc-subnets.out_subnet_ids, count.index ) }"
     user_data              = "${ data.ignition_config.etcd3.rendered }"
     vpc_security_group_ids = [ "${ module.security-group.out_security_group_id }" ]
@@ -94,6 +94,7 @@ data ignition_systemd_unit etcd3
 # = ===
 resource aws_key_pair troubleshoot
 {
+    count = "0"
     key_name = "etcd3-cluster-keypair"
     public_key = "${ local.public_key_content }"
 }
