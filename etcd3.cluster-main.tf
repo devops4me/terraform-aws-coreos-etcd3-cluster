@@ -6,8 +6,25 @@
 locals
 {
     ecosystem_id = "etcd3-cluster"
-    ignition_etcd3_json_content = "[Unit]\nRequires=coreos-metadata.service\nAfter=coreos-metadata.service\n\n[Service]\nEnvironmentFile=/run/metadata/coreos\nExecStart=\nExecStart=/usr/lib/coreos/etcd-wrapper $ETCD_OPTS \\\n  --listen-peer-urls=\"http://$${COREOS_EC2_IPV4_LOCAL}:2380\" \\\n  --listen-client-urls=\"http://0.0.0.0:2379\" \\\n  --initial-advertise-peer-urls=\"http://$${COREOS_EC2_IPV4_LOCAL}:2380\" \\\n  --advertise-client-urls=\"http://$${COREOS_EC2_IPV4_LOCAL}:2379\" \\\n  --discovery=\"https://discovery.etcd.io/2291edd0c764191c26c9969453db2b39\""
+    discovery_url = "${ data.external.etcd_url.result[ "etcd_discovery_url" ] }"
+
+    ignition_etcd3_json_content = "[Unit]\nRequires=coreos-metadata.service\nAfter=coreos-metadata.service\n\n[Service]\nEnvironmentFile=/run/metadata/coreos\nExecStart=\nExecStart=/usr/lib/coreos/etcd-wrapper $ETCD_OPTS \\\n  --listen-peer-urls=\"http://$${COREOS_EC2_IPV4_LOCAL}:2380\" \\\n  --listen-client-urls=\"http://0.0.0.0:2379\" \\\n  --initial-advertise-peer-urls=\"http://$${COREOS_EC2_IPV4_LOCAL}:2380\" \\\n  --advertise-client-urls=\"http://$${COREOS_EC2_IPV4_LOCAL}:2379\" \\\n  --discovery=\"${local.discovery_url}\""
+
     public_key_content = "ssh-rsa AAAABasdasdfasdfadfljiasdfa34324jh2f34hjgfjasdfasdfad"
+}
+
+
+
+# = ===
+# = Run a bash script which only contains a curl command to retrieve
+# = the etcd discovery url from the service offered by CoreOS.
+# = This is how to retrieve the URL from any command line.
+# = ===
+# = $ curl https://discovery.etcd.io/new?size=3
+# = ===
+data external etcd_url
+{
+    program = [ "python", "${path.module}/etcd3-discovery-url.py", "${ var.in_node_count }" ]
 }
 
 
