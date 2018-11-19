@@ -33,7 +33,112 @@ Ignition replaces the legacy cloud init (cloud-config.yaml) as a means of boostr
 
 This module places a load balancer in front of the etcd node cluster and provides it as an output. Use CUrl or the etcd REST API through this load balancer URL to converse with the cluster.
 
+    http://applb-etcd3-cluster-xxxxxxxxxx.eu-west-2.elb.amazonaws.com/v2/stats/leader
 
+**To prove this visit the path /v2/stats/leader and keep clicking refresh.**
+
+A third of the time the request will land on the leader's node and two-thirds of the time it won't.
+
+```json
+{
+   "leader":"57b0110512623df",
+   "followers":{
+      "2c455da15ca7bea1":{
+         "latency":{
+            "current":0.001424,
+            "average":0.0021979213747645955,
+            "standardDeviation":0.002590615376169443,
+            "minimum":0.001039,
+            "maximum":0.045671
+         },
+         "counts":{
+            "fail":0,
+            "success":4248
+         }
+      },
+      "60f9b51c7aecae3d":{
+         "latency":{
+            "current":0.00116,
+            "average":0.00239927976470589,
+            "standardDeviation":0.002361182466594901,
+            "minimum":0.001031,
+            "maximum":0.039685
+         },
+         "counts":{
+            "fail":0,
+            "success":4250
+         }
+      }
+   }
+}
+```
+
+---
+
+## etcd url locations
+
+Note that we can use the individual host urls or the single cluster load balancer url. As we've mapped the backend target port 2379 to the front-end listener port 80 we can use the load balancer url in the same way we would use any web url.
+
+    http://<<host-url>>:2379/health
+    http://<<host-url>>:2379/version
+
+    http://<<load-balancer-url>>/health
+    http://<<load-balancer-url>>/version
+
+    $ curl http://<<load-balancer-url>>/v2/keys/planets -XPUT -d value="earth jupiter mars"
+    $ curl http://<<load-balancer-url>>/v2/keys/galaxies -XPUT -d value="milky way / Orion"
+
+    $ curl http://<<load-balancer-url>>/v2/keys/planets
+    $ curl http://<<load-balancer-url>>/v2/keys/galaxies
+
+The response to the queries after setting the data should be something like this.
+
+    {
+       "action":"get",
+       "node":{
+          "key":"/planets",
+          "value":"earth jupiter mars",
+          "modifiedIndex":8,
+          "createdIndex":8
+       }
+    }
+
+Data can be modified and deleted with the below API calls.
+
+    $ curl http://<<load-balancer-url>>/v2/keys/planets -XPUT -d value="mercury/venus/saturn/jupiter/earth"
+
+    {
+       "action":"set",
+       "node":{
+          "key":"/planets",
+          "value":"mercury/venus/saturn/jupiter/earth",
+          "modifiedIndex":10,
+          "createdIndex":10
+       },
+       "prevNode":{
+          "key":"/planets",
+          "value":"earth jupiter mars",
+          "modifiedIndex":8,
+          "createdIndex":8
+       }
+    }
+
+    $ curl http://<<load-balancer-url>>/v2/keys/planets -XDELETE
+
+    {
+       "action":"delete",
+       "node":{
+          "key":"/planets",
+          "modifiedIndex":11,
+          "createdIndex":10
+       },
+       "prevNode":{
+          "key":"/planets",
+          "value":"mercury/venus/saturn/jupiter/earth",
+          "modifiedIndex":10,
+          "createdIndex":10
+       }
+    }
 
 
 ## etcd discovery url | python script
