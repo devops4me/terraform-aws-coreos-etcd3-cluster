@@ -9,8 +9,6 @@ locals
     discovery_url = "${ data.external.etcd_url.result[ "etcd_discovery_url" ] }"
 
     ignition_etcd3_json_content = "[Unit]\nRequires=coreos-metadata.service\nAfter=coreos-metadata.service\n\n[Service]\nEnvironmentFile=/run/metadata/coreos\nExecStart=\nExecStart=/usr/lib/coreos/etcd-wrapper $ETCD_OPTS \\\n  --listen-peer-urls=\"http://$${COREOS_EC2_IPV4_LOCAL}:2380\" \\\n  --listen-client-urls=\"http://0.0.0.0:2379\" \\\n  --initial-advertise-peer-urls=\"http://$${COREOS_EC2_IPV4_LOCAL}:2380\" \\\n  --advertise-client-urls=\"http://$${COREOS_EC2_IPV4_LOCAL}:2379\" \\\n  --discovery=\"${local.discovery_url}\""
-
-    public_key_content = "ssh-rsa AAAABasdasdfasdfadfljiasdfa34324jh2f34hjgfjasdfasdfad"
 }
 
 
@@ -38,7 +36,6 @@ resource aws_instance node
 
     instance_type          = "t2.micro"
     ami                    = "${ module.coreos_ami_id.out_ami_id }"
-###########    key_name               = "${ aws_key_pair.troubleshoot.id }"
     subnet_id              = "${ element( module.vpc-subnets.out_subnet_ids, count.index ) }"
     user_data              = "${ data.ignition_config.etcd3.rendered }"
     vpc_security_group_ids = [ "${ module.security-group.out_security_group_id }" ]
@@ -84,19 +81,6 @@ data ignition_systemd_unit etcd3
         content = "${ local.ignition_etcd3_json_content }"
     }
 
-}
-
-
-# = ===
-# = This public key enables logging into any of the nodes
-# = that should be running etcd3 for troubleshooting and
-# = validation purposes.
-# = ===
-resource aws_key_pair troubleshoot
-{
-    count = "0"
-    key_name = "etcd3-cluster-keypair"
-    public_key = "${ local.public_key_content }"
 }
 
 
