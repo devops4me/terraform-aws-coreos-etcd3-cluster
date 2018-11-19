@@ -110,12 +110,14 @@ resource aws_key_pair troubleshoot
 # = ===
 module load-balancer
 {
-    source                 = "github.com/devops4me/terraform-aws-load-balancer"
+    source               = "github.com/devops4me/terraform-aws-load-balancer"
     in_vpc_id            = "${ module.vpc-subnets.out_vpc_id }"
     in_subnet_ids        = "${ module.vpc-subnets.out_subnet_ids }"
     in_security_group_id = "${ module.security-group.out_security_group_id }"
     in_ip_addresses      = "${ aws_instance.node.*.private_ip }"
     in_ip_address_count  = 3
+    in_listeners         = [ "web"  ]
+    in_targets           = [ "etcd" ]
     in_ecosystem         = "${ local.ecosystem_id }"
 }
 
