@@ -19,7 +19,7 @@ output out_load_balancer_dns_name
 
 output out_public_ip_addresses
 {
-    value = "${ aws_instance.node.*.public_ip }"
+    value = "${ aws_instance.etcd3_node.*.public_ip }"
 }
 
 
@@ -29,5 +29,5 @@ output out_public_ip_addresses
 
 output out_private_ip_addresses
 {
-    value = "${ aws_instance.node.*.private_ip }"
+    value = "${ aws_instance.etcd3_node.*.private_ip }"
 }

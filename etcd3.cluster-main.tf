@@ -12,6 +12,15 @@ locals
 }
 
 
+# @@@@@@@@@@@@@@@@@@@@@
+# @@@@@@@@@@@@@@@@@@@@@
+# @@@@@@@@@@@@@@@@@@@@@
+resource aws_key_pair troubleshoot
+{
+    key_name = "etcd3-cluster-keypair"
+    public_key = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCXogeVepMAwZVBusFkHBabnLLL9NiYI0UgsxbqU8D5H+aMwOcZXiZyJSMvfgGQlkhFQidR3vhUcxmUA4LGlSHnEeiO7g7hgx5bb+nMI4RLXHzOh9BalsCEcZwFMAYAC2108EFLLflUMmIYe57XN/M/R6ct7pZAitIdEJ5/VpVTJ6P2Vj7Rt8BKn/p3bMy9l7CUcs/EmG/avxZ2ykK2bMl66l4fVE2r+vLqHLCUw+r6GtwTfeuT1iofhTp0ar82Pb3it+oSb7P2Kesq7AG6HpWHoyjQoQk+isTzdMrJ6ackIoYqZwol3wTSzx66QZmE8+KqODT/We7y1LqAMKOqa2tp"
+}
+
 
 # = ===
 # = Run a bash script which only contains a curl command to retrieve
@@ -30,15 +39,20 @@ data external etcd_url
 # = This EC2 instance bootsrap configured by ignition is the engine room
 # = that powers the etcd3 cluster running within the CoreOS machine.
 # = ===
-resource aws_instance node
+resource aws_instance etcd3_node
 {
     count = "3"
 
-    instance_type          = "t2.micro"
+    instance_type          = "t2.medium"
     ami                    = "${ module.coreos_ami_id.out_ami_id }"
-    subnet_id              = "${ element( module.vpc-subnets.out_subnet_ids, count.index ) }"
+    subnet_id              = "${ element( module.vpc-subnets.out_private_subnet_ids, count.index ) }"
     user_data              = "${ data.ignition_config.etcd3.rendered }"
     vpc_security_group_ids = [ "${ module.security-group.out_security_group_id }" ]
+
+# @@@@@@@@@@@@@@@@@@@@@
+# @@@@@@@@@@@@@@@@@@@@@
+    key_name               = "${ aws_key_pair.troubleshoot.id }"
+
 
     tags
     {
@@ -96,12 +110,13 @@ module load-balancer
 {
     source               = "github.com/devops4me/terraform-aws-load-balancer"
     in_vpc_id            = "${ module.vpc-subnets.out_vpc_id }"
-    in_subnet_ids        = "${ module.vpc-subnets.out_subnet_ids }"
+    in_subnet_ids        = "${ module.vpc-subnets.out_public_subnet_ids }"
     in_security_group_id = "${ module.security-group.out_security_group_id }"
-    in_ip_addresses      = "${ aws_instance.node.*.private_ip }"
+    in_ip_addresses      = "${ aws_instance.etcd3_node.*.private_ip }"
     in_ip_address_count  = 3
-    in_listeners         = [ "web"  ]
-    in_targets           = [ "etcd" ]
+    in_front_end         = [ "web"  ]
+    in_back_end          = [ "etcd" ]
+    in_is_internal       = false
     in_ecosystem         = "${ local.ecosystem_id }"
 }
 
@@ -118,8 +133,6 @@ module vpc-subnets
 {
     source                 = "github.com/devops4me/terraform-aws-vpc-subnets"
     in_vpc_cidr            = "10.66.0.0/16"
-    in_num_private_subnets = 0
-    in_num_public_subnets  = 3
     in_ecosystem           = "${local.ecosystem_id}"
 }
 
@@ -132,6 +145,7 @@ module vpc-subnets
 module security-group
 {
     source         = "github.com/devops4me/terraform-aws-security-group"
+#########    in_ingress     = [ "ssh", "http" ]
     in_ingress     = [ "ssh", "http", "https", "etcd-client", "etcd-server", "etcd-listen" ]
     in_vpc_id      = "${ module.vpc-subnets.out_vpc_id }"
     in_use_default = "true"
@@ -157,3 +171,60 @@ module ecosys
 {
     source = "github.com/devops4me/terraform-aws-stamps"
 }
+
+
+
+# @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+# @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+# @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+
+
+resource aws_instance bastion_node
+{
+    count = "3"
+
+    ami                    = "${ data.aws_ami.ubuntu1804.id }"
+    instance_type          = "t2.medium"
+    vpc_security_group_ids = [ "${ module.security-group.out_security_group_id }" ]
+
+    subnet_id              = "${ element( module.vpc-subnets.out_public_subnet_ids, count.index ) }"
+    key_name               = "${ aws_key_pair.troubleshoot.id }"
+
+    tags
+    {
+        Name   = "bastion-0${ ( count.index + 1 ) }-${ local.ecosystem_id }-${ module.ecosys.out_stamp }"
+        Class = "${ local.ecosystem_id }"
+        Instance = "${ local.ecosystem_id }-${ module.ecosys.out_stamp }"
+        Desc   = "This bastion ec2 node no.${ ( count.index + 1 ) } for ${ local.ecosystem_id } ${ module.ecosys.out_history_note }"
+    }
+
+
+
+}
+
+
+output out_bastion_public_ip_addresses
+{
+    value = "${ aws_instance.bastion_node.*.public_ip }"
+}
+
+
+
+    data aws_ami ubuntu1804
+    {
+        most_recent = true
+
+        filter
+        {
+            name   = "name"
+            values = ["ubuntu/images/hvm-ssd/ubuntu-bionic-18.04-amd64-server-*"]
+        }
+
+        filter
+        {
+            name   = "virtualization-type"
+            values = [ "hvm" ]
+        }
+
+        owners = ["099720109477"]
+    }
