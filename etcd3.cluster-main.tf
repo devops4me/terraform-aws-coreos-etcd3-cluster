@@ -39,7 +39,7 @@ resource aws_instance etcd3_node
 
     instance_type          = "t2.medium"
     ami                    = "${ module.coreos_ami_id.out_ami_id }"
-    subnet_id              = "${ element( module.vpc-subnets.out_private_subnet_ids, count.index ) }"
+    subnet_id              = "${ element( module.vpc-network.out_private_subnet_ids, count.index ) }"
     user_data              = "${ data.ignition_config.etcd3.rendered }"
     vpc_security_group_ids = [ "${ module.security-group.out_security_group_id }" ]
 
@@ -110,8 +110,8 @@ data ignition_systemd_unit etcd3
 module load-balancer
 {
     source               = "github.com/devops4me/terraform-aws-load-balancer"
-    in_vpc_id            = "${ module.vpc-subnets.out_vpc_id }"
-    in_subnet_ids        = "${ module.vpc-subnets.out_public_subnet_ids }"
+    in_vpc_id            = "${ module.vpc-network.out_vpc_id }"
+    in_subnet_ids        = "${ module.vpc-network.out_public_subnet_ids }"
     in_security_group_id = "${ module.security-group.out_security_group_id }"
     in_ip_addresses      = "${ aws_instance.etcd3_node.*.private_ip }"
     in_ip_address_count  = 3
@@ -132,9 +132,9 @@ module load-balancer
  | -- an internet gateway and a route out to the net.
  | --
 */
-module vpc-subnets
+module vpc-network
 {
-    source                 = "github.com/devops4me/terraform-aws-vpc-subnets"
+    source                 = "github.com/devops4me/terraform-aws-vpc-network"
     in_vpc_cidr            = "10.66.0.0/16"
     in_ecosystem           = "${local.ecosystem_id}"
 }
@@ -151,7 +151,7 @@ module security-group
 {
     source         = "github.com/devops4me/terraform-aws-security-group"
     in_ingress     = [ "http", "etcd-client", "etcd-server" ]
-    in_vpc_id      = "${ module.vpc-subnets.out_vpc_id }"
+    in_vpc_id      = "${ module.vpc-network.out_vpc_id }"
     in_use_default = "true"
     in_ecosystem   = "${ local.ecosystem_id }"
 }
