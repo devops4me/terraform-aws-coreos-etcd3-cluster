@@ -24,6 +24,12 @@ RUN apt-get update && apt-get --assume-yes install -qq -o=Dpkg::Use-Pty=0 \
 
 
 # --->
+# ---> Does Ubuntu ship with python3 as standard?
+# --->
+RUN python3 -V
+
+
+# --->
 # ---> The documentation here explains the makeup of the
 # ---> powerful useradd command.
 # --->
