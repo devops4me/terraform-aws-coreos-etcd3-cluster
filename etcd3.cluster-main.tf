@@ -152,7 +152,6 @@ module security-group
     source         = "github.com/devops4me/terraform-aws-security-group"
     in_ingress     = [ "http", "etcd-client", "etcd-server" ]
     in_vpc_id      = "${ module.vpc-network.out_vpc_id }"
-    in_use_default = "true"
     in_ecosystem   = "${ local.ecosystem_id }"
 }
 
