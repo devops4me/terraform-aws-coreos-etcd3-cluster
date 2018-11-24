@@ -16,17 +16,12 @@ FROM ubuntu:18.04
 USER root
 
 RUN apt-get update && apt-get --assume-yes install -qq -o=Dpkg::Use-Pty=0 \
-      curl  \
-      git   \
-      jq    \
-      tree  \
+      curl \
+      git  \
+      jq   \
+      python-minimal \
+      tree \
       unzip
-
-
-# --->
-# ---> Does Ubuntu ship with python3 as standard?
-# --->
-RUN python3 -V
 
 
 # --->
