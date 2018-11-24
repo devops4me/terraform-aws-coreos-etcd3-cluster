@@ -31,6 +31,13 @@ RUN apt-get update && apt-get --assume-yes install -qq -o=Dpkg::Use-Pty=0 \
 
 
 # --->
+# ---> The pythong program that Terraform will run requires that
+# ---> the requests package is pre-installed with pip.
+# --->
+RUN pip install requests
+
+
+# --->
 # ---> The documentation here explains the makeup of the
 # ---> powerful useradd command.
 # --->
