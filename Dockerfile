@@ -9,18 +9,24 @@ FROM ubuntu:18.04
 
 # --->
 # ---> Assume the root user and install git, terraform,
-# ---> a time zone manipulator and pythonic tools for
-# ---> testing the AWS based infrastructure.
+# ---> a time zone manipulator and pythonic tools primarily
+# ---> for executing the external python program both for
+# ---> getting the CoreOS AMI ID and automatically fetching
+# ---> the etcd3 cluster discovery url.
 # --->
 
 USER root
 
 RUN apt-get update && apt-get --assume-yes install -qq -o=Dpkg::Use-Pty=0 \
-      curl \
-      git  \
-      jq   \
-      python-minimal \
-      tree \
+      curl            \
+      git             \
+      jq              \
+      python-pip      \
+      build-essential \
+      libssl-dev      \
+      libffi-dev      \
+      python-dev      \
+      tree            \
       unzip
 
 
