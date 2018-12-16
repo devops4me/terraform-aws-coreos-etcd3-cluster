@@ -109,16 +109,16 @@ data ignition_systemd_unit etcd3
 */
 module load-balancer
 {
-    source               = "github.com/devops4me/terraform-aws-load-balancer"
-    in_vpc_id            = "${ module.vpc-network.out_vpc_id }"
-    in_subnet_ids        = "${ module.vpc-network.out_public_subnet_ids }"
-    in_security_group_id = "${ module.security-group.out_security_group_id }"
-    in_ip_addresses      = "${ aws_instance.etcd3_node.*.private_ip }"
-    in_ip_address_count  = 3
-    in_front_end         = [ "web"  ]
-    in_back_end          = [ "etcd" ]
-    in_is_internal       = false
-    in_ecosystem         = "${ local.ecosystem_id }"
+    source                = "github.com/devops4me/terraform-aws-load-balancer"
+    in_vpc_id             = "${ module.vpc-network.out_vpc_id }"
+    in_subnet_ids         = "${ module.vpc-network.out_public_subnet_ids }"
+    in_security_group_ids = [ "${ module.security-group.out_security_group_id }" ]
+    in_ip_addresses       = "${ aws_instance.etcd3_node.*.private_ip }"
+    in_ip_address_count   = 3
+    in_front_end          = [ "web"  ]
+    in_back_end           = [ "etcd" ]
+    in_is_internal        = false
+    in_ecosystem          = "${ local.ecosystem_id }"
 }
 
 
