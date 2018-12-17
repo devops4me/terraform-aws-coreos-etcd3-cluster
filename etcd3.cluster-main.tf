@@ -5,7 +5,7 @@
 
 locals
 {
-    ecosystem_name = "etcd3-cluster"
+    ecosystem_id = "etcd3-cluster"
     discovery_url = "${ data.external.etcd_url.result[ "etcd_discovery_url" ] }"
 
     ignition_etcd3_json_content = "[Unit]\nRequires=coreos-metadata.service\nAfter=coreos-metadata.service\n\n[Service]\nEnvironmentFile=/run/metadata/coreos\nExecStart=\nExecStart=/usr/lib/coreos/etcd-wrapper $ETCD_OPTS \\\n  --listen-peer-urls=\"http://$${COREOS_EC2_IPV4_LOCAL}:2380\" \\\n  --listen-client-urls=\"http://0.0.0.0:2379\" \\\n  --initial-advertise-peer-urls=\"http://$${COREOS_EC2_IPV4_LOCAL}:2380\" \\\n  --advertise-client-urls=\"http://$${COREOS_EC2_IPV4_LOCAL}:2379\" \\\n  --discovery=\"${local.discovery_url}\""
@@ -45,11 +45,12 @@ resource aws_instance etcd3_node
 
     tags
     {
-        Name   = "node-0${ ( count.index + 1 ) }-${ local.ecosystem_id }-${ var.in_tag_timestamp }"
+        Name   = "node-0${ ( count.index + 1 ) }-${ local.ecosystem_id }-${ module.resource-tags.out_tag_timestamp }"
         Class = "${ local.ecosystem_id }"
-        Instance = "${ local.ecosystem_id }-${ var.in_tag_timestamp }"
-        Desc   = "This etcd3 node no.${ ( count.index + 1 ) } for ${ local.ecosystem_id } ${ var.in_tag_description }"
+        Instance = "${ local.ecosystem_id }-${ module.resource-tags.out_tag_timestamp }"
+        Desc   = "This etcd3 node no.${ ( count.index + 1 ) } for ${ local.ecosystem_id } ${ module.resource-tags.out_tag_description }"
     }
+
 
 }
 
