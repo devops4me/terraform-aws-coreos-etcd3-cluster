@@ -119,7 +119,10 @@ module load-balancer
     in_front_end          = [ "web"  ]
     in_back_end           = [ "etcd" ]
     in_is_internal        = false
-    in_ecosystem          = "${ local.ecosystem_id }"
+
+    in_ecosystem_name     = "${local.ecosystem_id}"
+    in_tag_timestamp      = "${ module.resource-tags.out_tag_timestamp }"
+    in_tag_description    = "${ module.resource-tags.out_tag_description }"
 }
 
 
@@ -135,9 +138,12 @@ module load-balancer
 */
 module vpc-network
 {
-    source                 = "github.com/devops4me/terraform-aws-vpc-network"
-    in_vpc_cidr            = "10.66.0.0/16"
-    in_ecosystem           = "${local.ecosystem_id}"
+    source                = "github.com/devops4me/terraform-aws-vpc-network"
+    in_vpc_cidr           = "10.66.0.0/16"
+
+    in_ecosystem_name     = "${local.ecosystem_id}"
+    in_tag_timestamp      = "${ module.resource-tags.out_tag_timestamp }"
+    in_tag_description    = "${ module.resource-tags.out_tag_description }"
 }
 
 
@@ -153,7 +159,10 @@ module security-group
     source         = "github.com/devops4me/terraform-aws-security-group"
     in_ingress     = [ "http", "etcd-client", "etcd-server" ]
     in_vpc_id      = "${ module.vpc-network.out_vpc_id }"
-    in_ecosystem   = "${ local.ecosystem_id }"
+
+    in_ecosystem_name  = "${local.ecosystem_id}"
+    in_tag_timestamp   = "${ module.resource-tags.out_tag_timestamp }"
+    in_tag_description = "${ module.resource-tags.out_tag_description }"
 }
 
 
