@@ -5,7 +5,7 @@
 
 locals
 {
-    ecosystem_id = "etcd3-cluster"
+    ecosystem_name = "etcd3-cluster"
     discovery_url = "${ data.external.etcd_url.result[ "etcd_discovery_url" ] }"
 
     ignition_etcd3_json_content = "[Unit]\nRequires=coreos-metadata.service\nAfter=coreos-metadata.service\n\n[Service]\nEnvironmentFile=/run/metadata/coreos\nExecStart=\nExecStart=/usr/lib/coreos/etcd-wrapper $ETCD_OPTS \\\n  --listen-peer-urls=\"http://$${COREOS_EC2_IPV4_LOCAL}:2380\" \\\n  --listen-client-urls=\"http://0.0.0.0:2379\" \\\n  --initial-advertise-peer-urls=\"http://$${COREOS_EC2_IPV4_LOCAL}:2380\" \\\n  --advertise-client-urls=\"http://$${COREOS_EC2_IPV4_LOCAL}:2379\" \\\n  --discovery=\"${local.discovery_url}\""
@@ -45,10 +45,10 @@ resource aws_instance etcd3_node
 
     tags
     {
-        Name   = "node-0${ ( count.index + 1 ) }-${ local.ecosystem_id }-${ module.ecosys.out_stamp }"
+        Name   = "node-0${ ( count.index + 1 ) }-${ local.ecosystem_id }-${ var.in_tag_timestamp }"
         Class = "${ local.ecosystem_id }"
-        Instance = "${ local.ecosystem_id }-${ module.ecosys.out_stamp }"
-        Desc   = "This etcd3 node no.${ ( count.index + 1 ) } for ${ local.ecosystem_id } ${ module.ecosys.out_history_note }"
+        Instance = "${ local.ecosystem_id }-${ var.in_tag_timestamp }"
+        Desc   = "This etcd3 node no.${ ( count.index + 1 ) } for ${ local.ecosystem_id } ${ var.in_tag_description }"
     }
 
 }
@@ -168,11 +168,19 @@ module coreos_ami_id
 }
 
 
-# = ===
-# = Build the eco-system string identifier and a history note detailing the
-# = who, why, what, when and where.
-# = ===
-module ecosys
+/*
+ | --
+ | -- Remember the AWS resource tags! Using this module, every
+ | -- infrastructure component is tagged to tell you 5 things.
+ | --
+ | --   a) who (which IAM user) created the component
+ | --   b) which eco-system instance is this component a part of
+ | --   c) when (timestamp) was this component created
+ | --   d) where (in which AWS region) was this component created
+ | --   e) which eco-system class is this component a part of
+ | --
+*/
+module resource-tags
 {
-    source = "github.com/devops4me/terraform-aws-stamps"
+    source = "github.com/devops4me/terraform-aws-resource-tags"
 }
