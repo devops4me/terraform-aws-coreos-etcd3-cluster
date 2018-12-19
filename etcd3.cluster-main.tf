@@ -116,7 +116,7 @@ module load-balancer
     in_security_group_ids = [ "${ module.security-group.out_security_group_id }" ]
     in_ip_addresses       = "${ aws_instance.etcd3_node.*.private_ip }"
     in_ip_address_count   = 3
-    in_front_end          = [ "web"  ]
+    in_front_end          = [ "http" ]
     in_back_end           = [ "etcd" ]
     in_is_internal        = false
 
